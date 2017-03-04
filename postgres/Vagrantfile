@@ -1,0 +1,35 @@
+VAGRANTFILE_API_VERSION = "2"
+
+$script = <<SCRIPT
+  echo "=== adding Postgres repo ==="
+  sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" >> /etc/apt/sources.list.d/pgdg.list'
+  wget -q https://www.postgresql.org/media/keys/ACCC4CF8.asc -O - | sudo apt-key add -
+  
+  echo "=== updating packages ==="
+  apt-get update
+  
+  echo "=== installing Postgres ==="
+  apt-get -y install postgresql-9.6
+  
+  echo "=== changing listen address ==="
+  sudo sed -i "s/#listen_address.*/listen_addresses '*'/" /etc/postgresql/9.6/main/postgresql.conf
+  
+  echo "=== opening Postgres for any connection ==="
+  sudo echo "\n host all all 0.0.0.0/0 trust" >> /etc/postgresql/9.6/main/pg_hba.conf
+  
+  echo "=== creating new role ==="
+  sudo -u postgres createuser --superuser --no-password vagrant
+  
+  echo "=== creating new database ==="
+  sudo -u postgres createdb vagrant
+  
+  echo "=== restarting Postgresql ==="
+  sudo service postgresql restart
+SCRIPT
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "precise32"
+  config.vm.box_url = "http://files.vagrantup.com/precise32.box"
+  config.vm.network :forwarded_port, guest: 5432, host: 5432
+  config.vm.provision "shell", inline: $script
+end
